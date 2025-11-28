@@ -4,4 +4,10 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "aiogram>=3.22.0",
+    "apscheduler>=3.11.1",
+    "loguru>=0.7.3",
+    "pydantic>=2.11.10",
+    "sqlmodel>=0.0.27",
+]
