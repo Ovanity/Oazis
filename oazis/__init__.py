@@ -1,0 +1,2 @@
+"""Oazis hydration bot package."""
+
