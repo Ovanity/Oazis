@@ -12,6 +12,7 @@ from oazis.db.session import get_engine, init_db
 from oazis.logger import configure_logging
 from oazis.scheduler import create_scheduler, register_jobs
 from oazis.services.hydration import HydrationService
+from oazis.bot.commands import configure_bot_commands
 
 
 def _ensure_sqlite_dir(database_url: str) -> None:
@@ -36,6 +37,10 @@ async def main() -> None:
     hydration_service = HydrationService(engine, settings)
 
     bot = create_bot(settings)
+    await configure_bot_commands(bot)
+    me = await bot.get_me()
+    if me.username:
+        logger.info("Start link: https://t.me/{username}?start=go", username=me.username)
     dispatcher = create_dispatcher(hydration_service)
 
     scheduler = create_scheduler(settings)
