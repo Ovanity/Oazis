@@ -5,6 +5,32 @@ Oazis est un bot Telegram minimal pour suivre l'hydratation quotidienne et envoy
 - Installer les dépendances : `uv sync`.
 - Lancer le bot : `uv run python main.py`.
 
+## Déploiement Docker (ex. sur un VPS)
+
+### 1. Préparer la configuration
+- Copier `.env.example` vers `.env` et renseigner au minimum `TELEGRAM_BOT_TOKEN`.
+- Sur le VPS, le fichier `.env` sera monté dans le conteneur.
+
+### 2. Construire l'image
+- Sur le VPS (ou en local puis `docker push`), depuis la racine du projet :
+  - `docker build -t oazis-bot .`
+
+### 3. Créer un dossier pour la base SQLite
+- Sur le VPS, par exemple :
+  - `mkdir -p /srv/oazis-data`
+
+### 4. Lancer le conteneur
+- Exemple de commande :
+  - `docker run -d --name oazis \\`
+  - `  --restart unless-stopped \\`
+  - `  --env-file .env \\`
+  - `  -v /srv/oazis-data:/app/data \\`
+  - `  oazis-bot`
+
+Notes :
+- Le bot utilise le long polling Telegram : aucun port n'a besoin d'être exposé.
+- Le volume `/srv/oazis-data:/app/data` permet de conserver la base SQLite (`./data/oazis.db`) entre les redémarrages.
+
 ## Structure du projet
 - `oazis/config`: chargement de la configuration via Pydantic.
 - `oazis/logger.py`: configuration centralisée de Loguru.
