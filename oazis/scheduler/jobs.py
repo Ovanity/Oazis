@@ -83,6 +83,15 @@ async def send_hydration_reminders(bot: Bot, service: HydrationService, settings
                 "Besoin de couper les rappels du jour ? Va dans ⚙️ Réglages.",
                 reply_markup=reminder_actions_keyboard(),
             )
+            logger.info(
+                "event=reminder_sent user_id={user_id} target_ml={target_ml} consumed_ml={consumed_ml} start_hour={start} end_hour={end} interval_min={interval}",
+                user_id=user.telegram_id,
+                target_ml=target_ml,
+                consumed_ml=consumed,
+                start=start_hour,
+                end=end_hour,
+                interval=interval_minutes,
+            )
         except Exception as exc:  # noqa: BLE001 - log and continue
             logger.error("Failed to send reminder to {user_id}: {error}", user_id=user.telegram_id, error=exc)
 
@@ -109,6 +118,12 @@ async def _send_goal_reached(bot: Bot, user_id: int, consumed_ml: int, target_ml
         f"Total du jour : <b>{progress}</b>.\n"
         "Les rappels sont coupés pour aujourd'hui.\n"
         "Tu peux toujours enregistrer un verre supplémentaire si besoin 👇"
+    )
+    logger.info(
+        "event=goal_notified_reminder user_id={user_id} consumed_ml={consumed_ml} goal_ml={goal_ml}",
+        user_id=user_id,
+        consumed_ml=consumed_ml,
+        goal_ml=target_ml,
     )
     await bot.send_message(user_id, text, reply_markup=reminder_actions_keyboard())
 

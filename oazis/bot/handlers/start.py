@@ -26,12 +26,20 @@ def build_router(service: HydrationService) -> Router:
             return
 
         user = await service.ensure_user(message.from_user.id)
-        logger.info("Registered user {user_id}", user_id=user.telegram_id)
+        logger.info(
+            "event=user_start user_id={user_id} chat_id={chat_id} chat_type={chat_type} username={username} language={language} is_premium={is_premium}",
+            user_id=user.telegram_id,
+            chat_id=message.chat.id if message.chat else None,
+            chat_type=message.chat.type if message.chat else None,
+            username=message.from_user.username,
+            language=message.from_user.language_code,
+            is_premium=getattr(message.from_user, "is_premium", False),
+        )
 
         await message.answer(
-            "👋 <b>Bienvenue sur Oazis</b>\n"
-            "Pour t'aider à boire suffisamment, sans prise de tête.\n"
-            "Réglons ton programme en deux clics, puis tout se gère depuis le hub.\n"
+            "👋 <b>Bienvenue sur Oazis</b>\n\n"
+            "Pour t'aider à boire assez chaque jour, sans prise de tête.\n\n"
+            "On règle ton programme en quelques clics, puis tout se gère depuis le hub.\n\n"
             "<i>Avec amour, par Martin.</i>",
             reply_markup=start_keyboard(),
         )
@@ -42,9 +50,9 @@ def build_router(service: HydrationService) -> Router:
             return
         await callback.answer()
         await callback.message.answer(
-            "🚀 <b>Onboarding</b>\n"
-            "💧 Choisis ton objectif quotidien (4 à 10 verres).\n"
-            "Tu pourras toujours ajuster ensuite dans les réglages.",
+            "🚀 <b>Onboarding</b>\n\n"
+            "💧 Choisis ton objectif quotidien (entre 4 et 10 verres).\n\n"
+            "Tu pourras toujours ajuster ça plus tard dans les réglages.",
             reply_markup=onboarding_goal_keyboard(),
         )
 
@@ -61,10 +69,20 @@ def build_router(service: HydrationService) -> Router:
             await callback.answer("Choisis entre 4 et 10 verres.", show_alert=True)
             return
         await service.update_user_preferences(callback.from_user.id, daily_target_glasses=count)
+        logger.info(
+            "event=onboarding_goal_set user_id={user_id} chat_id={chat_id} chat_type={chat_type} goal_glasses={goal} goal_ml={goal_ml} language={language} is_premium={is_premium}",
+            user_id=callback.from_user.id,
+            chat_id=callback.message.chat.id if callback.message.chat else None,
+            chat_type=callback.message.chat.type if callback.message.chat else None,
+            goal=count,
+            goal_ml=count * service.settings.glass_volume_ml,
+            language=callback.from_user.language_code,
+            is_premium=getattr(callback.from_user, "is_premium", False),
+        )
         await callback.answer("Objectif enregistré.")
         await callback.message.answer(
-            f"🎯 Objectif réglé sur <b>{count} verres/jour</b>.\n"
-            "⏱️ Choisis le type de rappels qui te convient.",
+            f"🎯 Objectif réglé sur <b>{count} verres / jour</b>.\n\n"
+            "⏱️ Choisis maintenant le type de rappels qui te convient le mieux.",
             reply_markup=onboarding_profile_keyboard(),
         )
 
@@ -98,12 +116,26 @@ def build_router(service: HydrationService) -> Router:
         start = user.reminder_start_hour
         end = user.reminder_end_hour
         goal = user.daily_target_glasses or 0
+        logger.info(
+            "event=onboarding_profile_set user_id={user_id} chat_id={chat_id} chat_type={chat_type} profile={profile} start_hour={start} end_hour={end} interval_min={interval} goal_glasses={goal} language={language} is_premium={is_premium}",
+            user_id=callback.from_user.id,
+            chat_id=callback.message.chat.id if callback.message.chat else None,
+            chat_type=callback.message.chat.type if callback.message.chat else None,
+            profile=profile,
+            start=start,
+            end=end,
+            interval=interval,
+            goal=goal,
+            language=callback.from_user.language_code,
+            is_premium=getattr(callback.from_user, "is_premium", False),
+        )
 
         summary = (
             "✅ <b>Paramètres enregistrés</b>\n\n"
-            f"• Objectif : <b>{goal} verres/jour</b>\n"
+            f"• Objectif : <b>{goal} verres / jour</b>\n"
             f"• Rappels : <b>{label}</b>\n\n"
-            "Tu peux accéder au hub pour tout gérer."
+            "Tu es prêt.\n"
+            "Utilise le bouton 🏝️ Hub ci-dessous pour tout gérer tranquillement."
         )
         await callback.message.answer(summary, reply_markup=hub_keyboard())
 

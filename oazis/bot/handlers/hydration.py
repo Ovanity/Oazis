@@ -3,6 +3,7 @@
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
+from loguru import logger
 
 from oazis.bot.formatting import format_progress
 from oazis.bot.keyboards import DRINK_CALLBACK_PREFIX, hydration_log_keyboard, reminder_actions_keyboard
@@ -18,8 +19,17 @@ def build_router(service: HydrationService) -> Router:
             return
 
         entry = await service.record_glass(message.from_user.id)
+        logger.info(
+            "event=glass_logged user_id={user_id} chat_id={chat_id} chat_type={chat_type} source=command volume_ml={volume_ml} consumed_ml={consumed_ml} goal_ml={goal_ml}",
+            user_id=message.from_user.id,
+            chat_id=message.chat.id if message.chat else None,
+            chat_type=message.chat.type if message.chat else None,
+            volume_ml=service.settings.glass_volume_ml,
+            consumed_ml=entry.consumed_ml,
+            goal_ml=entry.goal_ml,
+        )
         await message.answer(
-            "👌 <b>Noté</b>\n"
+            "👌 <b>Noté</b>\n\n"
             f"Total du jour : <b>{format_progress(entry.consumed_ml, entry.goal_ml)}</b>.",
             reply_markup=hydration_log_keyboard(),
         )
@@ -29,6 +39,9 @@ def build_router(service: HydrationService) -> Router:
             entry,
             hydration_log_keyboard,
             message.answer,
+            chat_id=message.chat.id if message.chat else None,
+            chat_type=message.chat.type if message.chat else None,
+            source="command",
         )
 
     @router.callback_query(F.data.startswith(DRINK_CALLBACK_PREFIX))
@@ -44,8 +57,17 @@ def build_router(service: HydrationService) -> Router:
 
         entry = await service.record_glass(callback.from_user.id, volume_ml=volume_ml)
         response_text = (
-            "👌 <b>Noté</b>\n"
+            "👌 <b>Noté</b>\n\n"
             f"Total du jour : <b>{format_progress(entry.consumed_ml, entry.goal_ml)}</b>."
+        )
+        logger.info(
+            "event=glass_logged user_id={user_id} chat_id={chat_id} chat_type={chat_type} source=callback volume_ml={volume_ml} consumed_ml={consumed_ml} goal_ml={goal_ml}",
+            user_id=callback.from_user.id,
+            chat_id=callback.message.chat.id if callback.message and callback.message.chat else None,
+            chat_type=callback.message.chat.type if callback.message and callback.message.chat else None,
+            volume_ml=volume_ml,
+            consumed_ml=entry.consumed_ml,
+            goal_ml=entry.goal_ml,
         )
 
         if callback.message:
@@ -56,6 +78,9 @@ def build_router(service: HydrationService) -> Router:
                 entry,
                 lambda: reminder_actions_keyboard(volume_ml),
                 callback.message.answer,
+                chat_id=callback.message.chat.id if callback.message.chat else None,
+                chat_type=callback.message.chat.type if callback.message.chat else None,
+                source="callback",
             )
         await callback.answer("Hydratation enregistrée.")
 
@@ -80,6 +105,10 @@ async def _maybe_notify_goal(
     entry,
     keyboard_factory,
     send_func,
+    *,
+    chat_id: int | None,
+    chat_type: str | None,
+    source: str,
 ) -> None:
     """Send a one-time celebration when the daily goal is reached."""
     goal_ml = entry.goal_ml
@@ -92,9 +121,19 @@ async def _maybe_notify_goal(
         return
 
     await service.record_goal_notified(user_id)
+    logger.info(
+        "event=goal_notified user_id={user_id} chat_id={chat_id} chat_type={chat_type} source={source} consumed_ml={consumed_ml} goal_ml={goal_ml}",
+        user_id=user_id,
+        chat_id=chat_id,
+        chat_type=chat_type,
+        source=source,
+        consumed_ml=consumed_ml,
+        goal_ml=goal_ml,
+    )
     await send_func(
-        "🎉 <b>Objectif atteint</b> !\n"
-        f"Total du jour : <b>{format_progress(consumed_ml, goal_ml)}</b>.\n"
-        "Les rappels sont coupés pour aujourd'hui. Tu peux toujours enregistrer un verre si besoin 👇",
+        "🎉 <b>Objectif du jour atteint</b>\n\n"
+        f"Total du jour : <b>{format_progress(consumed_ml, goal_ml)}</b>.\n\n"
+        "Les rappels sont coupés pour aujourd'hui.\n"
+        "Tu peux toujours enregistrer un verre si tu en prends un 👇",
         reply_markup=keyboard_factory(),
     )

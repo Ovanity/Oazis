@@ -2,6 +2,7 @@
 
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
+from loguru import logger
 
 from oazis.bot.keyboards import (
     GLASS_GOAL_PREFIX,
@@ -32,24 +33,26 @@ def build_router(service: HydrationService) -> Router:
         suffix = callback.data.removeprefix(NAV_RESTART_ONBOARDING)
         if suffix == ":goal":
             await callback.message.answer(
-                "🎯 <b>Objectif quotidien</b>\nChoisis une cible entre 4 et 10 verres.",
+                "🎯 <b>Objectif quotidien</b>\n\n"
+                "Choisis une cible entre 4 et 10 verres.",
                 reply_markup=glasses_goal_keyboard(),
             )
         elif suffix == ":window":
             await callback.message.answer(
-                "🕒 <b>Plage de rappels</b>\n"
+                "🕒 <b>Plage de rappels</b>\n\n"
                 "Choisis une plage qui colle à ton rythme.",
                 reply_markup=reminder_window_keyboard(),
             )
         elif suffix == ":freq":
             await callback.message.answer(
-                "⏱️ <b>Fréquence des rappels</b>\n"
+                "⏱️ <b>Fréquence des rappels</b>\n\n"
                 "Prends le rythme qui te va le mieux.",
                 reply_markup=reminder_frequency_keyboard(),
             )
         else:
             await callback.message.answer(
-                "⚙️ <b>Réglages</b>\nAjuste ton programme en un clic.",
+                "⚙️ <b>Réglages</b>\n\n"
+                "Ajuste ton programme en un clic.",
                 reply_markup=settings_menu_keyboard(),
             )
 
@@ -70,10 +73,20 @@ def build_router(service: HydrationService) -> Router:
             return
 
         await service.update_user_preferences(callback.from_user.id, daily_target_glasses=count)
+        logger.info(
+            "event=settings_goal_updated user_id={user_id} chat_id={chat_id} chat_type={chat_type} goal_glasses={goal} goal_ml={goal_ml} language={language} is_premium={is_premium}",
+            user_id=callback.from_user.id,
+            chat_id=callback.message.chat.id if callback.message and callback.message.chat else None,
+            chat_type=callback.message.chat.type if callback.message and callback.message.chat else None,
+            goal=count,
+            goal_ml=count * service.settings.glass_volume_ml,
+            language=callback.from_user.language_code,
+            is_premium=getattr(callback.from_user, "is_premium", False),
+        )
         await callback.answer("Objectif mis à jour.")
         if callback.message:
             await callback.message.answer(
-                f"✅ Objectif réglé sur {count} verres / jour (≈ {count * service.settings.glass_volume_ml} ml).\n"
+                f"✅ Objectif réglé sur {count} verres / jour (≈ {count * service.settings.glass_volume_ml} ml).\n\n"
                 "Choisis maintenant ta plage horaire de rappels.",
                 reply_markup=reminder_window_keyboard(),
             )
@@ -105,10 +118,20 @@ def build_router(service: HydrationService) -> Router:
             reminder_start_hour=start,
             reminder_end_hour=end,
         )
+        logger.info(
+            "event=settings_window_updated user_id={user_id} chat_id={chat_id} chat_type={chat_type} start_hour={start} end_hour={end} language={language} is_premium={is_premium}",
+            user_id=callback.from_user.id,
+            chat_id=callback.message.chat.id if callback.message and callback.message.chat else None,
+            chat_type=callback.message.chat.type if callback.message and callback.message.chat else None,
+            start=start,
+            end=end,
+            language=callback.from_user.language_code,
+            is_premium=getattr(callback.from_user, "is_premium", False),
+        )
         await callback.answer("Plage enregistrée.")
         if callback.message:
             await callback.message.answer(
-                f"✅ Rappels entre {start}h et {end}h.\n"
+                f"✅ Rappels entre {start}h et {end}h.\n\n"
                 "Choisis la fréquence des rappels :",
                 reply_markup=reminder_frequency_keyboard(),
             )
@@ -133,12 +156,24 @@ def build_router(service: HydrationService) -> Router:
             callback.from_user.id,
             reminder_interval_minutes=interval,
         )
+        logger.info(
+            "event=settings_interval_updated user_id={user_id} chat_id={chat_id} chat_type={chat_type} interval_min={interval} language={language} is_premium={is_premium}",
+            user_id=callback.from_user.id,
+            chat_id=callback.message.chat.id if callback.message and callback.message.chat else None,
+            chat_type=callback.message.chat.type if callback.message and callback.message.chat else None,
+            interval=interval,
+            language=callback.from_user.language_code,
+            is_premium=getattr(callback.from_user, "is_premium", False),
+        )
         await callback.answer("Fréquence mise à jour.")
         if callback.message:
             await callback.message.answer(
-                f"✅ Rappel toutes les {interval} minutes. "
-                "Conseil : 1-2 verres le matin, 2-3 sur les repas, 1-2 le soir.\n"
-                "Tu es prêt, utilise le bouton ci-dessous pour enregistrer tes verres.",
+                f"✅ Rappel toutes les {interval} minutes.\n\n"
+                "Conseil :\n"
+                "• 1–2 verres le matin\n"
+                "• 2–3 sur les repas\n"
+                "• 1–2 le soir\n\n"
+                "Tu es prêt : utilise le bouton ci-dessous pour enregistrer tes verres.",
                 reply_markup=hydration_log_keyboard(),
             )
 
@@ -147,9 +182,17 @@ def build_router(service: HydrationService) -> Router:
         if not callback.from_user or not callback.message:
             return
         await service.pause_reminders_today(callback.from_user.id)
+        logger.info(
+            "event=reminders_paused_today user_id={user_id} chat_id={chat_id} chat_type={chat_type} language={language} is_premium={is_premium}",
+            user_id=callback.from_user.id,
+            chat_id=callback.message.chat.id if callback.message.chat else None,
+            chat_type=callback.message.chat.type if callback.message.chat else None,
+            language=callback.from_user.language_code,
+            is_premium=getattr(callback.from_user, "is_premium", False),
+        )
         await callback.answer("Rappels coupés pour aujourd'hui.")
         await callback.message.answer(
-            "🔕 Rappels coupés pour aujourd'hui.\n"
+            "🔕 Rappels coupés pour aujourd'hui.\n\n"
             "Tu peux toujours noter un verre si tu en prends un.",
             reply_markup=hydration_log_keyboard(),
         )
@@ -159,6 +202,14 @@ def build_router(service: HydrationService) -> Router:
         if not callback.from_user or not callback.message:
             return
         await service.resume_reminders_today(callback.from_user.id)
+        logger.info(
+            "event=reminders_resumed_today user_id={user_id} chat_id={chat_id} chat_type={chat_type} language={language} is_premium={is_premium}",
+            user_id=callback.from_user.id,
+            chat_id=callback.message.chat.id if callback.message.chat else None,
+            chat_type=callback.message.chat.type if callback.message.chat else None,
+            language=callback.from_user.language_code,
+            is_premium=getattr(callback.from_user, "is_premium", False),
+        )
         await callback.answer("Rappels réactivés.")
         await callback.message.answer(
             "🔔 Rappels réactivés pour aujourd'hui.",

@@ -127,6 +127,7 @@ def onboarding_profile_keyboard() -> InlineKeyboardMarkup:
 
 def hub_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    builder.button(text="🏝️ Hub", callback_data=NAV_HUB)
     builder.button(text="💧 Hydratation", callback_data=NAV_HYDRATION)
     builder.button(text="📊 Statistiques", callback_data=NAV_STATS)
     builder.button(text="⚙️ Réglages", callback_data=NAV_SETTINGS)

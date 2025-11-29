@@ -8,6 +8,7 @@ from typing import List
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
+from loguru import logger
 from oazis.config import Settings
 from oazis.db import DailyHydration, HydrationEvent, User
 from oazis.db.session import session_scope
@@ -289,4 +290,14 @@ class HydrationService:
         session.add(user)
         session.commit()
         session.refresh(user)
+        logger.info(
+            "event=user_created user_id={user_id} timezone={timezone} target_glasses={glasses} target_ml={target_ml} start_hour={start} end_hour={end} interval_min={interval}",
+            user_id=user.telegram_id,
+            timezone=user.timezone,
+            glasses=user.daily_target_glasses,
+            target_ml=user.daily_target_ml,
+            start=user.reminder_start_hour,
+            end=user.reminder_end_hour,
+            interval=user.reminder_interval_minutes,
+        )
         return user
