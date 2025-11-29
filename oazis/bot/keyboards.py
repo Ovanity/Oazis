@@ -19,6 +19,15 @@ REMINDER_FREQUENCIES = (
     (90, "Toutes les 90 min"),
     (120, "Toutes les 120 min"),
 )
+ONBOARD_START = "onboard:start"
+ONBOARD_GOAL_PREFIX = "onboard:goal:"
+ONBOARD_WINDOW_PREFIX = "onboard:window:"
+ONBOARD_FREQ_PREFIX = "onboard:freq:"
+NAV_HUB = "nav:hub"
+NAV_HYDRATION = "nav:hydration"
+NAV_SETTINGS = "nav:settings"
+NAV_STATS = "nav:stats"
+NAV_RESTART_ONBOARDING = "nav:onboarding"
 
 
 def hydration_log_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
@@ -55,5 +64,66 @@ def reminder_frequency_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for minutes, label in REMINDER_FREQUENCIES:
         builder.button(text=label, callback_data=f"{REMINDER_INTERVAL_PREFIX}{minutes}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def start_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🚀 Commencer", callback_data=ONBOARD_START)
+    builder.button(text="🏝️ Ouvrir le hub", callback_data=NAV_HUB)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def onboarding_goal_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for count in GLASS_GOAL_OPTIONS:
+        builder.button(text=f"{count} verres / jour", callback_data=f"{ONBOARD_GOAL_PREFIX}{count}")
+    builder.adjust(2, 2)
+    return builder.as_markup()
+
+
+def onboarding_window_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for value, label in REMINDER_WINDOWS:
+        builder.button(text=label, callback_data=f"{ONBOARD_WINDOW_PREFIX}{value}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def onboarding_frequency_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for minutes, label in REMINDER_FREQUENCIES:
+        builder.button(text=label, callback_data=f"{ONBOARD_FREQ_PREFIX}{minutes}")
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def hub_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="💧 Hydratation", callback_data=NAV_HYDRATION)
+    builder.button(text="📊 Statistiques", callback_data=NAV_STATS)
+    builder.button(text="⚙️ Réglages", callback_data=NAV_SETTINGS)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def hydration_actions_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=f"🥤 +{volume_ml} ml", callback_data=f"{DRINK_CALLBACK_PREFIX}{volume_ml}")
+    builder.button(text="📊 Statistiques", callback_data=NAV_STATS)
+    builder.button(text="⚙️ Réglages", callback_data=NAV_SETTINGS)
+    builder.button(text="🏝️ Hub", callback_data=NAV_HUB)
+    builder.adjust(1, 2, 1)
+    return builder.as_markup()
+
+
+def settings_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="🎯 Objectif quotidien", callback_data=NAV_RESTART_ONBOARDING + ":goal")
+    builder.button(text="🕒 Plage des rappels", callback_data=NAV_RESTART_ONBOARDING + ":window")
+    builder.button(text="⏱️ Fréquence des rappels", callback_data=NAV_RESTART_ONBOARDING + ":freq")
+    builder.button(text="🏝️ Hub", callback_data=NAV_HUB)
     builder.adjust(1)
     return builder.as_markup()

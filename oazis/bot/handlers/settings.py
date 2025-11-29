@@ -5,19 +5,49 @@ from aiogram.types import CallbackQuery
 
 from oazis.bot.keyboards import (
     GLASS_GOAL_PREFIX,
+    NAV_RESTART_ONBOARDING,
     REMINDER_FREQUENCIES,
     REMINDER_WINDOWS,
     REMINDER_INTERVAL_PREFIX,
     REMINDER_WINDOW_PREFIX,
+    glasses_goal_keyboard,
     hydration_log_keyboard,
     reminder_frequency_keyboard,
     reminder_window_keyboard,
+    settings_menu_keyboard,
 )
 from oazis.services.hydration import HydrationService
 
 
 def build_router(service: HydrationService) -> Router:
     router = Router(name="settings")
+
+    @router.callback_query(lambda c: c.data and c.data.startswith(NAV_RESTART_ONBOARDING))
+    async def open_settings_menu(callback: CallbackQuery) -> None:
+        if not callback.from_user or not callback.message or not callback.data:
+            return
+        await callback.answer()
+        suffix = callback.data.removeprefix(NAV_RESTART_ONBOARDING)
+        if suffix == ":goal":
+            await callback.message.answer(
+                "🎯 <b>Objectif quotidien</b>\nChoisis une cible entre 4 et 10 verres.",
+                reply_markup=glasses_goal_keyboard(),
+            )
+        elif suffix == ":window":
+            await callback.message.answer(
+                "🕒 <b>Plage de rappels</b>\nChoisis une plage qui te convient.",
+                reply_markup=reminder_window_keyboard(),
+            )
+        elif suffix == ":freq":
+            await callback.message.answer(
+                "⏱️ <b>Fréquence des rappels</b>\nPrends le rythme qui te va le mieux.",
+                reply_markup=reminder_frequency_keyboard(),
+            )
+        else:
+            await callback.message.answer(
+                "⚙️ <b>Réglages</b>\nAjuste ton programme en un clic.",
+                reply_markup=settings_menu_keyboard(),
+            )
 
     @router.callback_query(F.data.startswith(GLASS_GOAL_PREFIX))
     async def handle_glass_goal(callback: CallbackQuery) -> None:

@@ -4,13 +4,14 @@ from aiogram import Router
 
 from oazis.services.hydration import HydrationService
 
-from . import hydration, settings, start
+from . import hydration, hub, settings, start
 
 
 def build_router(service: HydrationService) -> Router:
     """Aggregate all routers."""
     router = Router(name="root")
     router.include_router(start.build_router(service))
+    router.include_router(hub.build_router(service))
     router.include_router(settings.build_router(service))
     router.include_router(hydration.build_router(service))
     return router

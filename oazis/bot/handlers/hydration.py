@@ -18,7 +18,8 @@ def build_router(service: HydrationService) -> Router:
 
         entry = await service.record_glass(message.from_user.id)
         await message.answer(
-            f"👌 Noté. Tu as consommé {entry.consumed_ml}/{entry.goal_ml} ml aujourd'hui.",
+            "👌 <b>Noté</b>\n"
+            f"Total du jour : <b>{entry.consumed_ml}/{entry.goal_ml} ml</b>.",
             reply_markup=hydration_log_keyboard(),
         )
         await _maybe_notify_goal(
@@ -41,7 +42,10 @@ def build_router(service: HydrationService) -> Router:
             return
 
         entry = await service.record_glass(callback.from_user.id, volume_ml=volume_ml)
-        response_text = f"👌 Noté. Tu as consommé {entry.consumed_ml}/{entry.goal_ml} ml aujourd'hui."
+        response_text = (
+            "👌 <b>Noté</b>\n"
+            f"Total du jour : <b>{entry.consumed_ml}/{entry.goal_ml} ml</b>."
+        )
 
         if callback.message:
             await callback.message.answer(response_text, reply_markup=hydration_log_keyboard(volume_ml))

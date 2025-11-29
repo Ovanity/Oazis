@@ -1,7 +1,8 @@
 """Domain services for hydration tracking."""
 
 import asyncio
-from datetime import date, datetime, time
+from dataclasses import dataclass
+from datetime import date, datetime, time, timedelta
 from typing import List
 
 from sqlalchemy.engine import Engine
@@ -10,6 +11,16 @@ from sqlmodel import Session, select
 from oazis.config import Settings
 from oazis.db import DailyHydration, HydrationEvent, User
 from oazis.db.session import session_scope
+
+
+@dataclass
+class HydrationStats:
+    days_considered: int
+    total_ml: int
+    average_ml: int
+    goal_hits: int
+    today_consumed_ml: int
+    today_goal_ml: int
 
 
 class HydrationService:
@@ -69,6 +80,10 @@ class HydrationService:
             users = session.exec(select(User)).all()
             return list(users)
 
+    async def get_stats(self, telegram_id: int, days: int = 7) -> HydrationStats:
+        """Return basic hydration stats over the last `days` (inclusive of today)."""
+        return await asyncio.to_thread(self._get_stats_sync, telegram_id, days)
+
     async def get_today_entry(self, telegram_id: int) -> DailyHydration | None:
         """Return today's hydration entry for a user, if any."""
         return await asyncio.to_thread(self._get_today_entry_sync, telegram_id)
@@ -80,6 +95,38 @@ class HydrationService:
                 DailyHydration.date == date.today(),
             )
             return session.exec(stmt).first()
+
+    def _get_stats_sync(self, telegram_id: int, days: int) -> HydrationStats:
+        today = date.today()
+        start_date = today - timedelta(days=days - 1)
+
+        with session_scope(self.engine) as session:
+            user = self._get_or_create_user(session, telegram_id)
+            stmt = select(DailyHydration).where(
+                DailyHydration.user_id == telegram_id,
+                DailyHydration.date >= start_date,
+            )
+            entries = session.exec(stmt).all()
+
+            today_entry = next((e for e in entries if e.date == today), None)
+            target_glasses = user.daily_target_glasses or self.settings.default_daily_glasses
+            default_goal_ml = user.daily_target_ml or target_glasses * self.settings.glass_volume_ml
+            today_goal_ml = today_entry.goal_ml if today_entry else default_goal_ml
+            today_consumed_ml = today_entry.consumed_ml if today_entry else 0
+
+            total_ml = sum(e.consumed_ml for e in entries)
+            goal_hits = sum(1 for e in entries if e.consumed_ml >= e.goal_ml)
+            days_considered = max(days, 1)
+            average_ml = total_ml // days_considered
+
+            return HydrationStats(
+                days_considered=days_considered,
+                total_ml=total_ml,
+                average_ml=average_ml,
+                goal_hits=goal_hits,
+                today_consumed_ml=today_consumed_ml,
+                today_goal_ml=today_goal_ml,
+            )
 
     async def has_goal_been_notified(self, telegram_id: int) -> bool:
         """Check whether a goal_reached notification was already sent today."""
