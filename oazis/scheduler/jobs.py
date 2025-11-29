@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from aiogram import Bot
 from loguru import logger
 
+from oazis.bot.keyboards import hydration_log_keyboard
 from oazis.config import Settings
 from oazis.services.hydration import HydrationService
 
@@ -26,7 +27,9 @@ async def send_hydration_reminders(bot: Bot, service: HydrationService, settings
         try:
             await bot.send_message(
                 user.telegram_id,
-                "💧 Rappel hydratation : pense à boire un verre d'eau.",
+                "💧 Rappel hydratation : pense à boire un verre d'eau.\n"
+                "👉 Utilise le bouton ci-dessous pour l'enregistrer.",
+                reply_markup=hydration_log_keyboard(),
             )
         except Exception as exc:  # noqa: BLE001 - log and continue
             logger.error("Failed to send reminder to {user_id}: {error}", user_id=user.telegram_id, error=exc)

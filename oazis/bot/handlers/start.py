@@ -5,6 +5,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 from loguru import logger
 
+from oazis.bot.keyboards import hydration_log_keyboard
 from oazis.services.hydration import HydrationService
 
 
@@ -21,9 +22,9 @@ def build_router(service: HydrationService) -> Router:
 
         await message.answer(
             "👋 Bienvenue sur Oazis.\n"
-            "Je t'aiderai à suivre ton hydratation quotidienne. "
-            "Utilise /drink quand tu as bu un verre."
+            "Je t'aiderai à suivre ton hydratation quotidienne.\n"
+            "👉 Appuie sur le bouton ci-dessous dès que tu bois un verre (250 ml par défaut).",
+            reply_markup=hydration_log_keyboard(),
         )
 
     return router
-
