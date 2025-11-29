@@ -79,7 +79,8 @@ async def send_hydration_reminders(bot: Bot, service: HydrationService, settings
                 f"• Astuce : <i>{tip}</i>\n"
                 f"{_reminder_humor()}\n"
                 f"Objectif du jour : <b>{format_volume_ml(target_ml)}</b>\n"
-                "👉 Appuie ci-dessous si tu viens de boire.",
+                "👉 Appuie ci-dessous si tu viens de boire.\n"
+                "Besoin de couper les rappels du jour ? Va dans ⚙️ Réglages.",
                 reply_markup=reminder_actions_keyboard(),
             )
         except Exception as exc:  # noqa: BLE001 - log and continue

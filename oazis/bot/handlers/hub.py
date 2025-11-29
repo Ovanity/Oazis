@@ -75,6 +75,7 @@ async def _send_hub(send_func, service: HydrationService, user_id: int) -> None:
     entry = await service.get_today_entry(user_id)
     target_ml = entry.goal_ml if entry else user.daily_target_ml or service.settings.default_daily_target_ml
     consumed_ml = entry.consumed_ml if entry else 0
+    goal_reached = consumed_ml >= target_ml
 
     text = (
         "🏝️ <b>Oazis</b>\n"
@@ -82,9 +83,12 @@ async def _send_hub(send_func, service: HydrationService, user_id: int) -> None:
         "💧 <b>Hydratation</b>\n"
         f"• Objectif : <b>{format_volume_ml(target_ml)}</b>\n"
         f"• Enregistré : <b>{format_volume_ml(consumed_ml)}</b>\n"
-        "• Rappels : ajuste dans ⚙️ Réglages si besoin\n\n"
-        "<i>Avec amour, par Martin.</i>"
+        "• Rappels : ajuste dans ⚙️ Réglages si besoin\n"
     )
+    if goal_reached:
+        text += "\n🎉 <b>Objectif du jour atteint</b> — bravo, tu peux te détendre."
+
+    text += "\n\n<i>Avec amour, par Martin.</i>"
     await send_func(text, reply_markup=hub_keyboard())
 
 
@@ -100,10 +104,10 @@ async def _send_hydration_view(send_func, service: HydrationService, user_id: in
     goal_glasses = user.daily_target_glasses or service.settings.default_daily_glasses
 
     text = (
-        "💧 <b>Hydratation du jour</b>\n"
+        "💧 <b>Hydratation du jour</b>\n\n"
         f"• Objectif : <b>{goal_glasses} verres</b> (~{format_volume_ml(target_ml)})\n"
         f"• Enregistré : <b>{format_progress(consumed_ml, target_ml)}</b>\n"
-        f"• Rappels : toutes les <b>{interval} min</b> entre <b>{start}h</b> et <b>{end}h</b>\n"
+        f"• Rappels : toutes les <b>{interval} min</b> entre <b>{start}h</b> et <b>{end}h</b>\n\n"
         "👉 Appuie ci-dessous pour noter un verre."
     )
     await send_func(text, reply_markup=hydration_actions_keyboard(service.settings.glass_volume_ml))
@@ -111,14 +115,14 @@ async def _send_hydration_view(send_func, service: HydrationService, user_id: in
 
 async def _build_stats_text(service: HydrationService, user_id: int) -> str:
     await service.ensure_user(user_id)
-    stats = await service.get_stats(user_id)
+    stats = await service.get_stats(user_id, days=30)
     avg_ml = stats.average_ml
     goal_hits = stats.goal_hits
     text = (
         "📊 <b>Statistiques</b>\n"
         f"• Aujourd'hui : <b>{format_progress(stats.today_consumed_ml, stats.today_goal_ml)}</b>\n"
         f"• Moyenne {stats.days_considered}j : <b>{format_volume_ml(avg_ml)}/jour</b>\n"
-        f"• Jours avec objectif atteint (7j) : <b>{goal_hits}</b>\n"
+        f"• Jours avec objectif atteint ({stats.days_considered}j) : <b>{goal_hits}</b>\n"
     )
     if goal_hits >= 5:
         text += "🌟 Beau rythme, continue comme ça."

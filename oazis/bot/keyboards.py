@@ -6,7 +6,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from oazis.bot.formatting import format_volume_ml
 
 DRINK_CALLBACK_PREFIX = "hydration:drink:"
-REMINDER_PAUSE = "reminder:pause"
+REMINDER_PAUSE_TODAY = "reminder:pause:today"
+REMINDER_RESUME = "reminder:resume"
 GLASS_GOAL_PREFIX = "settings:glasses:"
 REMINDER_WINDOW_PREFIX = "settings:window:"
 REMINDER_INTERVAL_PREFIX = "settings:interval:"
@@ -145,11 +146,10 @@ def hydration_actions_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
 
 
 def reminder_actions_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
-    """Focused keyboard for reminders: log or pause."""
+    """Focused keyboard for reminders: log only (pause via Réglages)."""
     builder = InlineKeyboardBuilder()
     label = format_volume_ml(volume_ml)
     builder.button(text=f"🥤 J'ai bu {label}", callback_data=f"{DRINK_CALLBACK_PREFIX}{volume_ml}")
-    builder.button(text="🔕 Pause rappels aujourd'hui", callback_data=REMINDER_PAUSE)
     builder.adjust(1)
     return builder.as_markup()
 
@@ -159,6 +159,8 @@ def settings_menu_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="🎯 Objectif quotidien", callback_data=NAV_RESTART_ONBOARDING + ":goal")
     builder.button(text="🕒 Plage des rappels", callback_data=NAV_RESTART_ONBOARDING + ":window")
     builder.button(text="⏱️ Fréquence des rappels", callback_data=NAV_RESTART_ONBOARDING + ":freq")
+    builder.button(text="🔕 Pause rappels (aujourd'hui)", callback_data=REMINDER_PAUSE_TODAY)
+    builder.button(text="🔔 Reprendre les rappels", callback_data=REMINDER_RESUME)
     builder.button(text="🏝️ Hub", callback_data=NAV_HUB)
     builder.adjust(1)
     return builder.as_markup()

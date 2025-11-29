@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
 from oazis.bot.formatting import format_progress
-from oazis.bot.keyboards import DRINK_CALLBACK_PREFIX, REMINDER_PAUSE, hydration_log_keyboard, reminder_actions_keyboard
+from oazis.bot.keyboards import DRINK_CALLBACK_PREFIX, hydration_log_keyboard, reminder_actions_keyboard
 from oazis.services.hydration import HydrationService
 
 
@@ -58,19 +58,6 @@ def build_router(service: HydrationService) -> Router:
                 callback.message.answer,
             )
         await callback.answer("Hydratation enregistrée.")
-
-    @router.callback_query(lambda c: c.data == REMINDER_PAUSE)
-    async def handle_pause(callback: CallbackQuery) -> None:
-        if not callback.from_user:
-            return
-        await service.pause_reminders_today(callback.from_user.id)
-        await callback.answer("Rappels coupés pour aujourd'hui.")
-        if callback.message:
-            await callback.message.answer(
-                "🔕 Rappels coupés pour aujourd'hui.\n"
-                "Tu peux toujours enregistrer un verre si tu en prends un 👇",
-                reply_markup=hydration_log_keyboard(),
-            )
 
     return router
 

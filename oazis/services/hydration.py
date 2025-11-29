@@ -116,17 +116,40 @@ class HydrationService:
         return await asyncio.to_thread(self._is_reminders_paused_today_sync, telegram_id)
 
     def _is_reminders_paused_today_sync(self, telegram_id: int) -> bool:
+        """Check the latest pause/resume event today to decide."""
         today = date.today()
         day_start = datetime.combine(today, time.min)
         day_end = datetime.combine(today, time.max)
         with session_scope(self.engine) as session:
-            stmt = select(HydrationEvent).where(
-                HydrationEvent.user_id == telegram_id,
-                HydrationEvent.event_type == "reminders_paused",
-                HydrationEvent.timestamp >= day_start,
-                HydrationEvent.timestamp <= day_end,
+            stmt = (
+                select(HydrationEvent)
+                .where(
+                    HydrationEvent.user_id == telegram_id,
+                    HydrationEvent.event_type.in_(["reminders_paused", "reminders_resumed"]),
+                    HydrationEvent.timestamp >= day_start,
+                    HydrationEvent.timestamp <= day_end,
+                )
+                .order_by(HydrationEvent.timestamp.desc())
             )
-            return session.exec(stmt).first() is not None
+            event = session.exec(stmt).first()
+            if not event:
+                return False
+            return event.event_type == "reminders_paused"
+
+    async def resume_reminders_today(self, telegram_id: int) -> None:
+        """Resume reminders for the rest of the day."""
+        await asyncio.to_thread(self._resume_reminders_today_sync, telegram_id)
+
+    def _resume_reminders_today_sync(self, telegram_id: int) -> None:
+        with session_scope(self.engine) as session:
+            session.add(
+                HydrationEvent(
+                    user_id=telegram_id,
+                    event_type="reminders_resumed",
+                    notes="resumed_until_end_of_day",
+                )
+            )
+            session.commit()
 
     def _get_stats_sync(self, telegram_id: int, days: int) -> HydrationStats:
         today = date.today()

@@ -5,6 +5,8 @@ from aiogram.types import CallbackQuery
 
 from oazis.bot.keyboards import (
     GLASS_GOAL_PREFIX,
+    REMINDER_PAUSE_TODAY,
+    REMINDER_RESUME,
     NAV_RESTART_ONBOARDING,
     REMINDER_FREQUENCIES,
     REMINDER_WINDOWS,
@@ -139,5 +141,28 @@ def build_router(service: HydrationService) -> Router:
                 "Tu es prêt, utilise le bouton ci-dessous pour enregistrer tes verres.",
                 reply_markup=hydration_log_keyboard(),
             )
+
+    @router.callback_query(lambda c: c.data == REMINDER_PAUSE_TODAY)
+    async def handle_pause_today(callback: CallbackQuery) -> None:
+        if not callback.from_user or not callback.message:
+            return
+        await service.pause_reminders_today(callback.from_user.id)
+        await callback.answer("Rappels coupés pour aujourd'hui.")
+        await callback.message.answer(
+            "🔕 Rappels coupés pour aujourd'hui.\n"
+            "Tu peux toujours noter un verre si tu en prends un.",
+            reply_markup=hydration_log_keyboard(),
+        )
+
+    @router.callback_query(lambda c: c.data == REMINDER_RESUME)
+    async def handle_resume(callback: CallbackQuery) -> None:
+        if not callback.from_user or not callback.message:
+            return
+        await service.resume_reminders_today(callback.from_user.id)
+        await callback.answer("Rappels réactivés.")
+        await callback.message.answer(
+            "🔔 Rappels réactivés pour aujourd'hui.",
+            reply_markup=hydration_log_keyboard(),
+        )
 
     return router

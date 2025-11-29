@@ -100,9 +100,9 @@ def build_router(service: HydrationService) -> Router:
         goal = user.daily_target_glasses or 0
 
         summary = (
-            "✅ <b>Paramètres enregistrés</b>\n"
+            "✅ <b>Paramètres enregistrés</b>\n\n"
             f"• Objectif : <b>{goal} verres/jour</b>\n"
-            f"• Rappels : <b>{label}</b>\n"
+            f"• Rappels : <b>{label}</b>\n\n"
             "Tu peux accéder au hub pour tout gérer."
         )
         await callback.message.answer(summary, reply_markup=hub_keyboard())
