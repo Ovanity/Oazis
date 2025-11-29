@@ -3,26 +3,30 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from oazis.bot.formatting import format_volume_ml
+
 DRINK_CALLBACK_PREFIX = "hydration:drink:"
+REMINDER_PAUSE = "reminder:pause"
 GLASS_GOAL_PREFIX = "settings:glasses:"
 REMINDER_WINDOW_PREFIX = "settings:window:"
 REMINDER_INTERVAL_PREFIX = "settings:interval:"
 
 GLASS_GOAL_OPTIONS = (4, 6, 8, 10)
 REMINDER_WINDOWS = (
-    ("8-22", "8h - 22h"),
-    ("9-21", "9h - 21h"),
-    ("10-20", "10h - 20h"),
+    ("8-22", "🌅 8h – 22h"),
+    ("9-21", "🌤 9h – 21h"),
+    ("10-20", "🌙 10h – 20h"),
 )
 REMINDER_FREQUENCIES = (
-    (60, "Toutes les 60 min"),
-    (90, "Toutes les 90 min"),
-    (120, "Toutes les 120 min"),
+    (60, "⚡️ Toutes les 60 min"),
+    (90, "🌿 Toutes les 90 min"),
+    (120, "🕰 Toutes les 120 min"),
 )
 ONBOARD_START = "onboard:start"
 ONBOARD_GOAL_PREFIX = "onboard:goal:"
 ONBOARD_WINDOW_PREFIX = "onboard:window:"
 ONBOARD_FREQ_PREFIX = "onboard:freq:"
+ONBOARD_PROFILE_PREFIX = "onboard:profile:"
 NAV_HUB = "nav:hub"
 NAV_HYDRATION = "nav:hydration"
 NAV_SETTINGS = "nav:settings"
@@ -33,8 +37,9 @@ NAV_RESTART_ONBOARDING = "nav:onboarding"
 def hydration_log_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
     """Single large button to log a glass of water."""
     builder = InlineKeyboardBuilder()
+    label = format_volume_ml(volume_ml)
     builder.button(
-        text=f"🥤 J'ai bu {volume_ml} ml",
+        text=f"🥤 J'ai bu {label}",
         callback_data=f"{DRINK_CALLBACK_PREFIX}{volume_ml}",
     )
     builder.adjust(1)  # One button per row to keep it large and easy to hit
@@ -100,6 +105,25 @@ def onboarding_frequency_keyboard() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def onboarding_profile_keyboard() -> InlineKeyboardMarkup:
+    """Bundled presets combining window + frequency to reduce friction."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text="🌿 Doux (9h–21h, 90 min)",
+        callback_data=f"{ONBOARD_PROFILE_PREFIX}balanced",
+    )
+    builder.button(
+        text="⚡️ Soutenu (8h–22h, 60 min)",
+        callback_data=f"{ONBOARD_PROFILE_PREFIX}focus",
+    )
+    builder.button(
+        text="🕰 Discret (10h–20h, 120 min)",
+        callback_data=f"{ONBOARD_PROFILE_PREFIX}light",
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def hub_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text="💧 Hydratation", callback_data=NAV_HYDRATION)
@@ -111,11 +135,22 @@ def hub_keyboard() -> InlineKeyboardMarkup:
 
 def hydration_actions_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=f"🥤 +{volume_ml} ml", callback_data=f"{DRINK_CALLBACK_PREFIX}{volume_ml}")
+    label = format_volume_ml(volume_ml)
+    builder.button(text=f"🥤 +1 verre ({label})", callback_data=f"{DRINK_CALLBACK_PREFIX}{volume_ml}")
     builder.button(text="📊 Statistiques", callback_data=NAV_STATS)
     builder.button(text="⚙️ Réglages", callback_data=NAV_SETTINGS)
     builder.button(text="🏝️ Hub", callback_data=NAV_HUB)
     builder.adjust(1, 2, 1)
+    return builder.as_markup()
+
+
+def reminder_actions_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
+    """Focused keyboard for reminders: log or pause."""
+    builder = InlineKeyboardBuilder()
+    label = format_volume_ml(volume_ml)
+    builder.button(text=f"🥤 J'ai bu {label}", callback_data=f"{DRINK_CALLBACK_PREFIX}{volume_ml}")
+    builder.button(text="🔕 Pause rappels aujourd'hui", callback_data=REMINDER_PAUSE)
+    builder.adjust(1)
     return builder.as_markup()
 
 

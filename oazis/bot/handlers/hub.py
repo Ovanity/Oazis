@@ -5,6 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from loguru import logger
 
+from oazis.bot.formatting import format_progress, format_volume_ml
 from oazis.bot.keyboards import (
     NAV_HUB,
     NAV_HYDRATION,
@@ -76,12 +77,13 @@ async def _send_hub(send_func, service: HydrationService, user_id: int) -> None:
     consumed_ml = entry.consumed_ml if entry else 0
 
     text = (
-        "🏝️ <b>Oazis</b> — hub bien‑être\n"
-        "Sélectionne une section pour continuer.\n\n"
+        "🏝️ <b>Oazis</b>\n"
+        "Ton espace hydratation, en douceur.\n\n"
         "💧 <b>Hydratation</b>\n"
-        f"• Objectif : <b>{target_ml} ml</b>\n"
-        f"• Enregistré : <b>{consumed_ml} ml</b>\n"
-        "• Rappels : configure ou ajuste dans ⚙️ Réglages\n"
+        f"• Objectif : <b>{format_volume_ml(target_ml)}</b>\n"
+        f"• Enregistré : <b>{format_volume_ml(consumed_ml)}</b>\n"
+        "• Rappels : ajuste dans ⚙️ Réglages si besoin\n\n"
+        "<i>Avec amour, par Martin.</i>"
     )
     await send_func(text, reply_markup=hub_keyboard())
 
@@ -99,8 +101,8 @@ async def _send_hydration_view(send_func, service: HydrationService, user_id: in
 
     text = (
         "💧 <b>Hydratation du jour</b>\n"
-        f"• Objectif : <b>{goal_glasses} verres</b> (~{target_ml} ml)\n"
-        f"• Enregistré : <b>{consumed_ml}/{target_ml} ml</b>\n"
+        f"• Objectif : <b>{goal_glasses} verres</b> (~{format_volume_ml(target_ml)})\n"
+        f"• Enregistré : <b>{format_progress(consumed_ml, target_ml)}</b>\n"
         f"• Rappels : toutes les <b>{interval} min</b> entre <b>{start}h</b> et <b>{end}h</b>\n"
         "👉 Appuie ci-dessous pour noter un verre."
     )
@@ -114,8 +116,8 @@ async def _build_stats_text(service: HydrationService, user_id: int) -> str:
     goal_hits = stats.goal_hits
     text = (
         "📊 <b>Statistiques</b>\n"
-        f"• Aujourd'hui : <b>{stats.today_consumed_ml}/{stats.today_goal_ml} ml</b>\n"
-        f"• Moyenne {stats.days_considered}j : <b>{avg_ml} ml/jour</b>\n"
+        f"• Aujourd'hui : <b>{format_progress(stats.today_consumed_ml, stats.today_goal_ml)}</b>\n"
+        f"• Moyenne {stats.days_considered}j : <b>{format_volume_ml(avg_ml)}/jour</b>\n"
         f"• Jours avec objectif atteint (7j) : <b>{goal_hits}</b>\n"
     )
     if goal_hits >= 5:

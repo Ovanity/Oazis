@@ -35,12 +35,14 @@ def build_router(service: HydrationService) -> Router:
             )
         elif suffix == ":window":
             await callback.message.answer(
-                "🕒 <b>Plage de rappels</b>\nChoisis une plage qui te convient.",
+                "🕒 <b>Plage de rappels</b>\n"
+                "Choisis une plage qui colle à ton rythme.",
                 reply_markup=reminder_window_keyboard(),
             )
         elif suffix == ":freq":
             await callback.message.answer(
-                "⏱️ <b>Fréquence des rappels</b>\nPrends le rythme qui te va le mieux.",
+                "⏱️ <b>Fréquence des rappels</b>\n"
+                "Prends le rythme qui te va le mieux.",
                 reply_markup=reminder_frequency_keyboard(),
             )
         else:
