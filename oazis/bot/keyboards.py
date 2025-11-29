@@ -8,6 +8,18 @@ GLASS_GOAL_PREFIX = "settings:glasses:"
 REMINDER_WINDOW_PREFIX = "settings:window:"
 REMINDER_INTERVAL_PREFIX = "settings:interval:"
 
+GLASS_GOAL_OPTIONS = (4, 6, 8, 10)
+REMINDER_WINDOWS = (
+    ("8-22", "8h - 22h"),
+    ("9-21", "9h - 21h"),
+    ("10-20", "10h - 20h"),
+)
+REMINDER_FREQUENCIES = (
+    (60, "Toutes les 60 min"),
+    (90, "Toutes les 90 min"),
+    (120, "Toutes les 120 min"),
+)
+
 
 def hydration_log_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
     """Single large button to log a glass of water."""
@@ -23,34 +35,25 @@ def hydration_log_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
 def glasses_goal_keyboard() -> InlineKeyboardMarkup:
     """Buttons for selecting a daily glass target."""
     builder = InlineKeyboardBuilder()
-    for count in range(4, 11):
+    for count in GLASS_GOAL_OPTIONS:
         builder.button(text=f"{count} verres / jour", callback_data=f"{GLASS_GOAL_PREFIX}{count}")
-    builder.adjust(2, 2, 2, 2, 2)  # Keep rows compact
+    builder.adjust(2, 2)
     return builder.as_markup()
 
 
-def reminder_setup_keyboard() -> InlineKeyboardMarkup:
-    """Preset buttons for reminder windows and frequencies."""
+def reminder_window_keyboard() -> InlineKeyboardMarkup:
+    """Preset buttons for reminder windows."""
     builder = InlineKeyboardBuilder()
-
-    # Windows (logical ranges morning -> evening)
-    windows = [
-        ("7-21", "7h - 21h (matin tôt)"),
-        ("8-22", "8h - 22h (équilibré)"),
-        ("9-21", "9h - 21h (classique)"),
-        ("10-20", "10h - 20h (soir léger)"),
-    ]
-    for value, label in windows:
+    for value, label in REMINDER_WINDOWS:
         builder.button(text=label, callback_data=f"{REMINDER_WINDOW_PREFIX}{value}")
+    builder.adjust(1)
+    return builder.as_markup()
 
-    # Frequencies
-    frequencies = [
-        (60, "Toutes les 60 min"),
-        (90, "Toutes les 90 min"),
-        (120, "Toutes les 120 min"),
-    ]
-    for minutes, label in frequencies:
+
+def reminder_frequency_keyboard() -> InlineKeyboardMarkup:
+    """Preset buttons for reminder frequencies."""
+    builder = InlineKeyboardBuilder()
+    for minutes, label in REMINDER_FREQUENCIES:
         builder.button(text=label, callback_data=f"{REMINDER_INTERVAL_PREFIX}{minutes}")
-
-    builder.adjust(2, 2, 3)  # 2 rows of windows, 1 row of frequencies
+    builder.adjust(1)
     return builder.as_markup()

@@ -5,10 +5,13 @@ from aiogram.types import CallbackQuery
 
 from oazis.bot.keyboards import (
     GLASS_GOAL_PREFIX,
+    REMINDER_FREQUENCIES,
+    REMINDER_WINDOWS,
     REMINDER_INTERVAL_PREFIX,
     REMINDER_WINDOW_PREFIX,
-    glasses_goal_keyboard,
-    reminder_setup_keyboard,
+    hydration_log_keyboard,
+    reminder_frequency_keyboard,
+    reminder_window_keyboard,
 )
 from oazis.services.hydration import HydrationService
 
@@ -36,8 +39,9 @@ def build_router(service: HydrationService) -> Router:
         await callback.answer("Objectif mis à jour.")
         if callback.message:
             await callback.message.answer(
-                f"✅ Objectif réglé sur {count} verres / jour (≈ {count * service.settings.glass_volume_ml} ml).",
-                reply_markup=glasses_goal_keyboard(),
+                f"✅ Objectif réglé sur {count} verres / jour (≈ {count * service.settings.glass_volume_ml} ml).\n"
+                "Choisis maintenant ta plage horaire de rappels.",
+                reply_markup=reminder_window_keyboard(),
             )
 
     @router.callback_query(F.data.startswith(REMINDER_WINDOW_PREFIX))
@@ -58,6 +62,10 @@ def build_router(service: HydrationService) -> Router:
             await callback.answer("Plage incohérente.", show_alert=True)
             return
 
+        if payload not in {w for w, _ in REMINDER_WINDOWS}:
+            await callback.answer("Plage non proposée.", show_alert=True)
+            return
+
         await service.update_user_preferences(
             callback.from_user.id,
             reminder_start_hour=start,
@@ -66,9 +74,9 @@ def build_router(service: HydrationService) -> Router:
         await callback.answer("Plage enregistrée.")
         if callback.message:
             await callback.message.answer(
-                f"✅ Rappels entre {start}h et {end}h. "
-                "Astuce : vise 1-2 verres le matin, 2-3 sur les repas, 1-2 le soir.",
-                reply_markup=reminder_setup_keyboard(),
+                f"✅ Rappels entre {start}h et {end}h.\n"
+                "Choisis la fréquence des rappels :",
+                reply_markup=reminder_frequency_keyboard(),
             )
 
     @router.callback_query(F.data.startswith(REMINDER_INTERVAL_PREFIX))
@@ -83,7 +91,7 @@ def build_router(service: HydrationService) -> Router:
             await callback.answer("Choix invalide.", show_alert=True)
             return
 
-        if interval not in {60, 90, 120}:
+        if interval not in {freq for freq, _ in REMINDER_FREQUENCIES}:
             await callback.answer("Intervalle non supporté.", show_alert=True)
             return
 
@@ -95,8 +103,9 @@ def build_router(service: HydrationService) -> Router:
         if callback.message:
             await callback.message.answer(
                 f"✅ Rappel toutes les {interval} minutes. "
-                "Pense à boire dès le matin, une fois par repas, et un petit verre le soir.",
-                reply_markup=reminder_setup_keyboard(),
+                "Conseil : 1-2 verres le matin, 2-3 sur les repas, 1-2 le soir.\n"
+                "Tu es prêt, utilise le bouton ci-dessous pour enregistrer tes verres.",
+                reply_markup=hydration_log_keyboard(),
             )
 
     return router
