@@ -1,0 +1,10 @@
+services:
+  oazis:
+    build: .
+    container_name: oazis
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./oazis-data:/app/data
+
