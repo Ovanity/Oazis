@@ -67,9 +67,11 @@ async def send_hydration_reminders(bot: Bot, service: HydrationService, settings
         try:
             await bot.send_message(
                 user.telegram_id,
-                "💧 Rappel hydratation : pense à boire un verre d'eau.\n"
-                f"{tip}\n"
-                "👉 Utilise le bouton ci-dessous pour l'enregistrer.",
+                "💧 <b>Rappel hydratation</b>\n"
+                f"• <i>{tip}</i>\n"
+                f"• Rappel toutes les <b>{interval_minutes} min</b>\n"
+                f"• Objectif du jour : <b>{target_ml} ml</b>\n"
+                "👉 Appuie sur le bouton ci-dessous pour enregistrer un verre.",
                 reply_markup=hydration_log_keyboard(),
             )
         except Exception as exc:  # noqa: BLE001 - log and continue
@@ -94,9 +96,9 @@ async def _send_goal_reached(bot: Bot, user_id: int, consumed_ml: int, target_ml
     """Send a one-time celebratory message when the daily goal is hit."""
     progress = f"{consumed_ml}/{target_ml} ml"
     text = (
-        "🎉 Objectif atteint !\n"
-        f"Tu as déjà noté {progress} aujourd'hui. "
-        "Je coupe les rappels pour aujourd'hui.\n"
-        "Tu peux quand même enregistrer un verre supplémentaire si besoin 👇"
+        "🎉 <b>Objectif atteint</b> !\n"
+        f"Total du jour : <b>{progress}</b>.\n"
+        "Les rappels sont coupés pour aujourd'hui.\n"
+        "Tu peux toujours enregistrer un verre supplémentaire si besoin 👇"
     )
     await bot.send_message(user_id, text, reply_markup=hydration_log_keyboard())

@@ -21,7 +21,13 @@ def build_router(service: HydrationService) -> Router:
             f"👌 Noté. Tu as consommé {entry.consumed_ml}/{entry.goal_ml} ml aujourd'hui.",
             reply_markup=hydration_log_keyboard(),
         )
-        await _maybe_notify_goal(service, message.from_user.id, entry, hydration_log_keyboard, message.answer)
+        await _maybe_notify_goal(
+            service,
+            message.from_user.id,
+            entry,
+            hydration_log_keyboard,
+            message.answer,
+        )
 
     @router.callback_query(F.data.startswith(DRINK_CALLBACK_PREFIX))
     async def handle_drink_button(callback: CallbackQuery) -> None:
@@ -82,8 +88,8 @@ async def _maybe_notify_goal(
 
     await service.record_goal_notified(user_id)
     await send_func(
-        "🎉 Objectif atteint !\n"
-        f"Total du jour : {consumed_ml}/{goal_ml} ml.\n"
-        "Je coupe les rappels pour aujourd'hui. Tu peux toujours enregistrer un verre si besoin 👇",
+        "🎉 <b>Objectif atteint</b> !\n"
+        f"Total du jour : <b>{consumed_ml}/{goal_ml} ml</b>.\n"
+        "Les rappels sont coupés pour aujourd'hui. Tu peux toujours enregistrer un verre si besoin 👇",
         reply_markup=keyboard_factory(),
     )
