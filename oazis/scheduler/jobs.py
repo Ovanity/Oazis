@@ -22,6 +22,12 @@ async def send_hydration_reminders(bot: Bot, service: HydrationService, settings
         logger.debug("No users registered for reminders")
         return
 
+    logger.info(
+        "event=reminder_tick now={now} users={count}",
+        now=now.isoformat(),
+        count=len(users),
+    )
+
     for user in users:
         start_hour = user.reminder_start_hour or settings.hydration_start_hour
         end_hour = user.reminder_end_hour or settings.hydration_end_hour
@@ -48,12 +54,27 @@ async def send_hydration_reminders(bot: Bot, service: HydrationService, settings
         minutes_start = start_hour * 60
 
         if not (minutes_start <= minutes_now < end_hour * 60):
+            logger.debug(
+                "Skip user {user_id}: outside reminder window now={now_hour}:{now_minute:02d} window={start}-{end}",
+                user_id=user.telegram_id,
+                now_hour=now.hour,
+                now_minute=now.minute,
+                start=start_hour,
+                end=end_hour,
+            )
             continue
 
         window_minutes = min(settings.reminder_check_minutes, interval_minutes)
         minutes_since_start = minutes_now - minutes_start
         # Allow a reminder in the first `window_minutes` after each interval boundary.
-        if minutes_since_start % interval_minutes >= window_minutes:
+        remainder = minutes_since_start % interval_minutes
+        if remainder > window_minutes:
+            logger.debug(
+                "Skip user {user_id}: off-slot remainder={remainder} window={window}",
+                user_id=user.telegram_id,
+                remainder=remainder,
+                window=window_minutes,
+            )
             continue
 
         entry = await service.get_today_entry(user.telegram_id)
