@@ -48,6 +48,20 @@ async def send_hydration_reminders(bot: Bot, service: HydrationService, settings
         if minutes_since_start % interval_minutes != 0:
             continue
 
+        entry = await service.get_today_entry(user.telegram_id)
+        target_glasses = user.daily_target_glasses or settings.default_daily_glasses
+        target_ml = user.daily_target_ml or target_glasses * settings.glass_volume_ml
+        if entry:
+            target_ml = entry.goal_ml
+        consumed = entry.consumed_ml if entry else 0
+
+        if consumed >= target_ml:
+            already_notified = await service.has_goal_been_notified(user.telegram_id)
+            if not already_notified:
+                await _send_goal_reached(bot, user.telegram_id, consumed, target_ml)
+                await service.record_goal_notified(user.telegram_id)
+            continue
+
         tip = _time_of_day_tip(now.hour)
 
         try:
@@ -74,3 +88,15 @@ def _time_of_day_tip(hour: int) -> str:
     if hour < 19:
         return "Astuce après-midi : garde un verre sur le bureau."
     return "Astuce soir : un petit verre, mais évite juste avant de dormir."
+
+
+async def _send_goal_reached(bot: Bot, user_id: int, consumed_ml: int, target_ml: int) -> None:
+    """Send a one-time celebratory message when the daily goal is hit."""
+    progress = f"{consumed_ml}/{target_ml} ml"
+    text = (
+        "🎉 Objectif atteint !\n"
+        f"Tu as déjà noté {progress} aujourd'hui. "
+        "Je coupe les rappels pour aujourd'hui.\n"
+        "Tu peux quand même enregistrer un verre supplémentaire si besoin 👇"
+    )
+    await bot.send_message(user_id, text, reply_markup=hydration_log_keyboard())

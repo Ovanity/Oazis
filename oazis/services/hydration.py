@@ -1,7 +1,7 @@
 """Domain services for hydration tracking."""
 
 import asyncio
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import List
 
 from sqlalchemy.engine import Engine
@@ -68,6 +68,50 @@ class HydrationService:
         with session_scope(self.engine) as session:
             users = session.exec(select(User)).all()
             return list(users)
+
+    async def get_today_entry(self, telegram_id: int) -> DailyHydration | None:
+        """Return today's hydration entry for a user, if any."""
+        return await asyncio.to_thread(self._get_today_entry_sync, telegram_id)
+
+    def _get_today_entry_sync(self, telegram_id: int) -> DailyHydration | None:
+        with session_scope(self.engine) as session:
+            stmt = select(DailyHydration).where(
+                DailyHydration.user_id == telegram_id,
+                DailyHydration.date == date.today(),
+            )
+            return session.exec(stmt).first()
+
+    async def has_goal_been_notified(self, telegram_id: int) -> bool:
+        """Check whether a goal_reached notification was already sent today."""
+        return await asyncio.to_thread(self._has_goal_been_notified_sync, telegram_id)
+
+    def _has_goal_been_notified_sync(self, telegram_id: int) -> bool:
+        today = date.today()
+        day_start = datetime.combine(today, time.min)
+        day_end = datetime.combine(today, time.max)
+        with session_scope(self.engine) as session:
+            stmt = select(HydrationEvent).where(
+                HydrationEvent.user_id == telegram_id,
+                HydrationEvent.event_type == "goal_notified",
+                HydrationEvent.timestamp >= day_start,
+                HydrationEvent.timestamp <= day_end,
+            )
+            return session.exec(stmt).first() is not None
+
+    async def record_goal_notified(self, telegram_id: int) -> None:
+        """Persist an event to avoid re-sending goal reached notifications."""
+        await asyncio.to_thread(self._record_goal_notified_sync, telegram_id)
+
+    def _record_goal_notified_sync(self, telegram_id: int) -> None:
+        with session_scope(self.engine) as session:
+            session.add(
+                HydrationEvent(
+                    user_id=telegram_id,
+                    event_type="goal_notified",
+                    notes="daily goal reached",
+                )
+            )
+            session.commit()
 
     async def update_user_preferences(
         self,
