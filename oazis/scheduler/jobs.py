@@ -50,8 +50,10 @@ async def send_hydration_reminders(bot: Bot, service: HydrationService, settings
         if not (minutes_start <= minutes_now < end_hour * 60):
             continue
 
+        window_minutes = min(settings.reminder_check_minutes, interval_minutes)
         minutes_since_start = minutes_now - minutes_start
-        if minutes_since_start % interval_minutes != 0:
+        # Allow a reminder in the first `window_minutes` after each interval boundary.
+        if minutes_since_start % interval_minutes >= window_minutes:
             continue
 
         entry = await service.get_today_entry(user.telegram_id)
