@@ -21,6 +21,7 @@ def build_router(service: HydrationService) -> Router:
             f"👌 Noté. Tu as consommé {entry.consumed_ml}/{entry.goal_ml} ml aujourd'hui.",
             reply_markup=hydration_log_keyboard(),
         )
+        await _maybe_notify_goal(service, message.from_user.id, entry, hydration_log_keyboard, message.answer)
 
     @router.callback_query(F.data.startswith(DRINK_CALLBACK_PREFIX))
     async def handle_drink_button(callback: CallbackQuery) -> None:
@@ -38,6 +39,13 @@ def build_router(service: HydrationService) -> Router:
 
         if callback.message:
             await callback.message.answer(response_text, reply_markup=hydration_log_keyboard(volume_ml))
+            await _maybe_notify_goal(
+                service,
+                callback.from_user.id,
+                entry,
+                lambda: hydration_log_keyboard(volume_ml),
+                callback.message.answer,
+            )
         await callback.answer("Hydratation enregistrée.")
 
     return router
@@ -53,3 +61,29 @@ def _extract_volume(callback_data: str) -> int | None:
         return int(payload)
     except ValueError:
         return None
+
+
+async def _maybe_notify_goal(
+    service: HydrationService,
+    user_id: int,
+    entry,
+    keyboard_factory,
+    send_func,
+) -> None:
+    """Send a one-time celebration when the daily goal is reached."""
+    goal_ml = entry.goal_ml
+    consumed_ml = entry.consumed_ml
+    if consumed_ml < goal_ml:
+        return
+
+    already = await service.has_goal_been_notified(user_id)
+    if already:
+        return
+
+    await service.record_goal_notified(user_id)
+    await send_func(
+        "🎉 Objectif atteint !\n"
+        f"Total du jour : {consumed_ml}/{goal_ml} ml.\n"
+        "Je coupe les rappels pour aujourd'hui. Tu peux toujours enregistrer un verre si besoin 👇",
+        reply_markup=keyboard_factory(),
+    )
