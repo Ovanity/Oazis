@@ -38,7 +38,7 @@ def build_router(service: HydrationService) -> Router:
 
     @router.callback_query(lambda c: c.data == ONBOARD_START)
     async def start_onboarding(callback: CallbackQuery) -> None:
-        if not callback.from_user:
+        if not callback.from_user or not callback.message:
             return
         await callback.answer()
         await callback.message.answer(
@@ -50,7 +50,7 @@ def build_router(service: HydrationService) -> Router:
 
     @router.callback_query(lambda c: c.data and c.data.startswith(ONBOARD_GOAL_PREFIX))
     async def onboarding_goal(callback: CallbackQuery) -> None:
-        if not callback.from_user or not callback.data:
+        if not callback.from_user or not callback.data or not callback.message:
             return
         try:
             count = int(callback.data.removeprefix(ONBOARD_GOAL_PREFIX))
@@ -70,7 +70,7 @@ def build_router(service: HydrationService) -> Router:
 
     @router.callback_query(lambda c: c.data and c.data.startswith(ONBOARD_PROFILE_PREFIX))
     async def onboarding_profile(callback: CallbackQuery) -> None:
-        if not callback.from_user or not callback.data:
+        if not callback.from_user or not callback.data or not callback.message:
             return
         profile = callback.data.removeprefix(ONBOARD_PROFILE_PREFIX)
         if profile == "balanced":
