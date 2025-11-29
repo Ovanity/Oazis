@@ -25,13 +25,14 @@ def register_jobs(
     """Attach recurring jobs to the scheduler."""
     scheduler.add_job(
         send_hydration_reminders,
-        trigger=IntervalTrigger(minutes=settings.reminder_interval_minutes),
+        trigger=IntervalTrigger(minutes=settings.reminder_check_minutes),
         args=[bot, service, settings],
         id="hydration_reminders",
         replace_existing=True,
     )
     logger.info(
-        "Hydration reminders scheduled every {minutes} minutes between {start}:00 and {end}:00",
+        "Hydration reminders evaluated every {tick} minutes (default interval {minutes} between {start}:00 and {end}:00)",
+        tick=settings.reminder_check_minutes,
         minutes=settings.reminder_interval_minutes,
         start=settings.hydration_start_hour,
         end=settings.hydration_end_hour,

@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     )
     database_url: str = Field(
         default="sqlite:///./data/oazis.db",
-        validation_alias=AliasChoices("DATABASE_URL", "OAZIS_DATABASE_URL"),
+    validation_alias=AliasChoices("DATABASE_URL", "OAZIS_DATABASE_URL"),
     )
     timezone: str = Field(
         default="Europe/Paris",
@@ -28,6 +28,18 @@ class Settings(BaseSettings):
     hydration_start_hour: int = Field(default=9, ge=0, le=23)
     hydration_end_hour: int = Field(default=21, ge=0, le=23)
     reminder_interval_minutes: int = Field(default=90, gt=0)
+    reminder_check_minutes: int = Field(
+        default=15,
+        gt=0,
+        description="Granularity for evaluating reminder windows (smaller = more precise, more load).",
+    )
+    glass_volume_ml: int = Field(default=250, gt=0)
+    default_daily_glasses: int = Field(
+        default=8,
+        ge=1,
+        le=20,
+        description="Used to derive default daily target if user has no preference.",
+    )
     default_daily_target_ml: int = Field(default=2000, gt=0)
 
 
@@ -35,4 +47,3 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return a cached Settings instance."""
     return Settings()
-

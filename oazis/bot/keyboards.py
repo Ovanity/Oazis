@@ -4,6 +4,9 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 DRINK_CALLBACK_PREFIX = "hydration:drink:"
+GLASS_GOAL_PREFIX = "settings:glasses:"
+REMINDER_WINDOW_PREFIX = "settings:window:"
+REMINDER_INTERVAL_PREFIX = "settings:interval:"
 
 
 def hydration_log_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
@@ -14,4 +17,40 @@ def hydration_log_keyboard(volume_ml: int = 250) -> InlineKeyboardMarkup:
         callback_data=f"{DRINK_CALLBACK_PREFIX}{volume_ml}",
     )
     builder.adjust(1)  # One button per row to keep it large and easy to hit
+    return builder.as_markup()
+
+
+def glasses_goal_keyboard() -> InlineKeyboardMarkup:
+    """Buttons for selecting a daily glass target."""
+    builder = InlineKeyboardBuilder()
+    for count in range(4, 11):
+        builder.button(text=f"{count} verres / jour", callback_data=f"{GLASS_GOAL_PREFIX}{count}")
+    builder.adjust(2, 2, 2, 2, 2)  # Keep rows compact
+    return builder.as_markup()
+
+
+def reminder_setup_keyboard() -> InlineKeyboardMarkup:
+    """Preset buttons for reminder windows and frequencies."""
+    builder = InlineKeyboardBuilder()
+
+    # Windows (logical ranges morning -> evening)
+    windows = [
+        ("7-21", "7h - 21h (matin tôt)"),
+        ("8-22", "8h - 22h (équilibré)"),
+        ("9-21", "9h - 21h (classique)"),
+        ("10-20", "10h - 20h (soir léger)"),
+    ]
+    for value, label in windows:
+        builder.button(text=label, callback_data=f"{REMINDER_WINDOW_PREFIX}{value}")
+
+    # Frequencies
+    frequencies = [
+        (60, "Toutes les 60 min"),
+        (90, "Toutes les 90 min"),
+        (120, "Toutes les 120 min"),
+    ]
+    for minutes, label in frequencies:
+        builder.button(text=label, callback_data=f"{REMINDER_INTERVAL_PREFIX}{minutes}")
+
+    builder.adjust(2, 2, 3)  # 2 rows of windows, 1 row of frequencies
     return builder.as_markup()

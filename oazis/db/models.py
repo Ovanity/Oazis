@@ -13,6 +13,7 @@ class User(SQLModel, table=True):
     role: str = Field(default="user")
     timezone: Optional[str] = Field(default=None, description="Preferred timezone for reminders")
     daily_target_ml: Optional[int] = Field(default=None, description="Custom daily water target")
+    daily_target_glasses: Optional[int] = Field(default=None, description="Target number of glasses per day")
     reminder_start_hour: Optional[int] = Field(default=None)
     reminder_end_hour: Optional[int] = Field(default=None)
     reminder_interval_minutes: Optional[int] = Field(default=None)
@@ -45,4 +46,3 @@ class HydrationEvent(SQLModel, table=True):
     notes: Optional[str] = Field(default=None, description="Optional metadata or payload")
 
     user: User = Relationship(back_populates="events")
-

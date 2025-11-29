@@ -35,7 +35,8 @@ class HydrationService:
         today = date.today()
         with session_scope(self.engine) as session:
             user = self._get_or_create_user(session, telegram_id)
-            target = user.daily_target_ml or self.settings.default_daily_target_ml
+            target_glasses = user.daily_target_glasses or self.settings.default_daily_glasses
+            target = user.daily_target_ml or target_glasses * self.settings.glass_volume_ml
 
             stmt = select(DailyHydration).where(
                 DailyHydration.user_id == telegram_id, DailyHydration.date == today
@@ -68,6 +69,63 @@ class HydrationService:
             users = session.exec(select(User)).all()
             return list(users)
 
+    async def update_user_preferences(
+        self,
+        telegram_id: int,
+        *,
+        daily_target_glasses: int | None = None,
+        reminder_start_hour: int | None = None,
+        reminder_end_hour: int | None = None,
+        reminder_interval_minutes: int | None = None,
+    ) -> User:
+        """Persist updated user preferences."""
+        return await asyncio.to_thread(
+            self._update_user_preferences_sync,
+            telegram_id,
+            daily_target_glasses,
+            reminder_start_hour,
+            reminder_end_hour,
+            reminder_interval_minutes,
+        )
+
+    def _update_user_preferences_sync(
+        self,
+        telegram_id: int,
+        daily_target_glasses: int | None,
+        reminder_start_hour: int | None,
+        reminder_end_hour: int | None,
+        reminder_interval_minutes: int | None,
+    ) -> User:
+        with session_scope(self.engine) as session:
+            user = self._get_or_create_user(session, telegram_id)
+            if daily_target_glasses is not None:
+                user.daily_target_glasses = daily_target_glasses
+                user.daily_target_ml = daily_target_glasses * self.settings.glass_volume_ml
+            if reminder_start_hour is not None:
+                user.reminder_start_hour = reminder_start_hour
+            if reminder_end_hour is not None:
+                user.reminder_end_hour = reminder_end_hour
+            if reminder_interval_minutes is not None:
+                user.reminder_interval_minutes = reminder_interval_minutes
+
+            # Align today's goal if an entry already exists
+            target_glasses = user.daily_target_glasses or self.settings.default_daily_glasses
+            new_goal_ml = user.daily_target_ml or target_glasses * self.settings.glass_volume_ml
+            stmt = select(DailyHydration).where(
+                DailyHydration.user_id == telegram_id,
+                DailyHydration.date == date.today(),
+            )
+            entry = session.exec(stmt).first()
+            if entry:
+                entry.goal_ml = new_goal_ml
+                entry.updated_at = datetime.utcnow()
+                session.add(entry)
+
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+            return user
+
     def _get_or_create_user(self, session: Session, telegram_id: int) -> User:
         user = session.get(User, telegram_id)
         if user:
@@ -76,7 +134,8 @@ class HydrationService:
         user = User(
             telegram_id=telegram_id,
             timezone=self.settings.timezone,
-            daily_target_ml=self.settings.default_daily_target_ml,
+            daily_target_glasses=self.settings.default_daily_glasses,
+            daily_target_ml=self.settings.default_daily_glasses * self.settings.glass_volume_ml,
             reminder_start_hour=self.settings.hydration_start_hour,
             reminder_end_hour=self.settings.hydration_end_hour,
             reminder_interval_minutes=self.settings.reminder_interval_minutes,
