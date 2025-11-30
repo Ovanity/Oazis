@@ -51,9 +51,7 @@ async def main() -> None:
     try:
         await dispatcher.start_polling(bot)
     finally:
-        shutdown_result = scheduler.shutdown(wait=False)
-        if inspect.isawaitable(shutdown_result):
-            await shutdown_result
+        scheduler.shutdown(wait=False)
         await bot.session.close()
 
 
