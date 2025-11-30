@@ -19,10 +19,11 @@ from oazis.bot.keyboards import (
     reminder_window_keyboard,
     settings_menu_keyboard,
 )
+from oazis.scheduler import ReminderScheduler
 from oazis.services.hydration import HydrationService
 
 
-def build_router(service: HydrationService) -> Router:
+def build_router(service: HydrationService, reminder_scheduler: ReminderScheduler) -> Router:
     router = Router(name="settings")
 
     @router.callback_query(lambda c: c.data and c.data.startswith(NAV_RESTART_ONBOARDING))
@@ -118,6 +119,7 @@ def build_router(service: HydrationService) -> Router:
             reminder_start_hour=start,
             reminder_end_hour=end,
         )
+        await reminder_scheduler.schedule_for_user(callback.from_user.id)
         logger.info(
             "event=settings_window_updated user_id={user_id} chat_id={chat_id} chat_type={chat_type} start_hour={start} end_hour={end} language={language} is_premium={is_premium}",
             user_id=callback.from_user.id,
@@ -156,6 +158,7 @@ def build_router(service: HydrationService) -> Router:
             callback.from_user.id,
             reminder_interval_minutes=interval,
         )
+        await reminder_scheduler.schedule_for_user(callback.from_user.id)
         logger.info(
             "event=settings_interval_updated user_id={user_id} chat_id={chat_id} chat_type={chat_type} interval_min={interval} language={language} is_premium={is_premium}",
             user_id=callback.from_user.id,

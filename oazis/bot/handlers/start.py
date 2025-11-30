@@ -14,10 +14,11 @@ from oazis.bot.keyboards import (
     onboarding_profile_keyboard,
     start_keyboard,
 )
+from oazis.scheduler import ReminderScheduler
 from oazis.services.hydration import HydrationService
 
 
-def build_router(service: HydrationService) -> Router:
+def build_router(service: HydrationService, reminder_scheduler: ReminderScheduler) -> Router:
     router = Router(name="start")
 
     @router.message(CommandStart())
@@ -26,6 +27,7 @@ def build_router(service: HydrationService) -> Router:
             return
 
         user = await service.ensure_user(message.from_user.id)
+        await reminder_scheduler.schedule_for_user(user.telegram_id)
         logger.info(
             "event=user_start user_id={user_id} chat_id={chat_id} chat_type={chat_type} username={username} language={language} is_premium={is_premium}",
             user_id=user.telegram_id,
@@ -113,6 +115,7 @@ def build_router(service: HydrationService) -> Router:
         await callback.answer("Rappels enregistrés.")
 
         user = await service.ensure_user(callback.from_user.id)
+        await reminder_scheduler.schedule_for_user(user.telegram_id)
         start = user.reminder_start_hour
         end = user.reminder_end_hour
         goal = user.daily_target_glasses or 0

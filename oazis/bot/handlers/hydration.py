@@ -7,10 +7,11 @@ from loguru import logger
 
 from oazis.bot.formatting import format_progress
 from oazis.bot.keyboards import DRINK_CALLBACK_PREFIX, hydration_log_keyboard, reminder_actions_keyboard
+from oazis.scheduler import ReminderScheduler
 from oazis.services.hydration import HydrationService
 
 
-def build_router(service: HydrationService) -> Router:
+def build_router(service: HydrationService, reminder_scheduler: ReminderScheduler) -> Router:
     router = Router(name="hydration")
 
     @router.message(Command("drink"))
@@ -19,6 +20,7 @@ def build_router(service: HydrationService) -> Router:
             return
 
         entry = await service.record_glass(message.from_user.id)
+        await reminder_scheduler.schedule_for_user(message.from_user.id)
         logger.info(
             "event=glass_logged user_id={user_id} chat_id={chat_id} chat_type={chat_type} source=command volume_ml={volume_ml} consumed_ml={consumed_ml} goal_ml={goal_ml}",
             user_id=message.from_user.id,
@@ -56,6 +58,7 @@ def build_router(service: HydrationService) -> Router:
             return
 
         entry = await service.record_glass(callback.from_user.id, volume_ml=volume_ml)
+        await reminder_scheduler.schedule_for_user(callback.from_user.id)
         response_text = (
             "👌 <b>Noté</b>\n\n"
             f"Total du jour : <b>{format_progress(entry.consumed_ml, entry.goal_ml)}</b>."

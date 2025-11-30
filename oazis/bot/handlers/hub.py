@@ -15,10 +15,11 @@ from oazis.bot.keyboards import (
     hydration_actions_keyboard,
     settings_menu_keyboard,
 )
+from oazis.scheduler import ReminderScheduler
 from oazis.services.hydration import HydrationService
 
 
-def build_router(service: HydrationService) -> Router:
+def build_router(service: HydrationService, reminder_scheduler: ReminderScheduler) -> Router:
     router = Router(name="hub")
 
     @router.message(Command("hub"))
@@ -29,6 +30,7 @@ def build_router(service: HydrationService) -> Router:
             message.answer,
             service,
             message.from_user.id,
+            reminder_scheduler,
             source="command",
             chat_id=message.chat.id if message.chat else None,
             chat_type=message.chat.type if message.chat else None,
@@ -43,6 +45,7 @@ def build_router(service: HydrationService) -> Router:
             callback.message.answer,
             service,
             callback.from_user.id,
+            reminder_scheduler,
             source="callback",
             chat_id=callback.message.chat.id if callback.message.chat else None,
             chat_type=callback.message.chat.type if callback.message.chat else None,
@@ -57,6 +60,7 @@ def build_router(service: HydrationService) -> Router:
             callback.message.answer,
             service,
             callback.from_user.id,
+            reminder_scheduler,
             source="callback",
             chat_id=callback.message.chat.id if callback.message.chat else None,
             chat_type=callback.message.chat.type if callback.message.chat else None,
@@ -103,8 +107,9 @@ def build_router(service: HydrationService) -> Router:
     return router
 
 
-async def _send_hub(send_func, service: HydrationService, user_id: int, *, source: str, chat_id: int | None, chat_type: str | None) -> None:
+async def _send_hub(send_func, service: HydrationService, user_id: int, reminder_scheduler: ReminderScheduler, *, source: str, chat_id: int | None, chat_type: str | None) -> None:
     user = await service.ensure_user(user_id)
+    await reminder_scheduler.schedule_for_user(user_id)
     entry = await service.get_today_entry(user_id)
     target_ml = entry.goal_ml if entry else user.daily_target_ml or service.settings.default_daily_target_ml
     consumed_ml = entry.consumed_ml if entry else 0
@@ -138,8 +143,9 @@ async def _send_hub(send_func, service: HydrationService, user_id: int, *, sourc
     await send_func(text, reply_markup=hub_keyboard())
 
 
-async def _send_hydration_view(send_func, service: HydrationService, user_id: int, *, source: str, chat_id: int | None, chat_type: str | None) -> None:
+async def _send_hydration_view(send_func, service: HydrationService, user_id: int, reminder_scheduler: ReminderScheduler, *, source: str, chat_id: int | None, chat_type: str | None) -> None:
     user = await service.ensure_user(user_id)
+    await reminder_scheduler.schedule_for_user(user_id)
     entry = await service.get_today_entry(user_id)
 
     target_ml = entry.goal_ml if entry else user.daily_target_ml or service.settings.default_daily_target_ml

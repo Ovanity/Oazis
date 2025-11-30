@@ -10,7 +10,7 @@ from oazis.bot import create_bot, create_dispatcher
 from oazis.config import get_settings
 from oazis.db.session import get_engine, init_db
 from oazis.logger import configure_logging
-from oazis.scheduler import create_scheduler, register_jobs
+from oazis.scheduler import ReminderScheduler, create_scheduler
 from oazis.services.hydration import HydrationService
 from oazis.bot.commands import configure_bot_commands
 
@@ -41,11 +41,11 @@ async def main() -> None:
     me = await bot.get_me()
     if me.username:
         logger.info("Start link: https://t.me/{username}?start=go", username=me.username)
-    dispatcher = create_dispatcher(hydration_service)
-
     scheduler = create_scheduler(settings)
-    register_jobs(scheduler, hydration_service, settings, bot)
+    reminder_scheduler = ReminderScheduler(scheduler, bot, hydration_service, settings)
+    await reminder_scheduler.schedule_for_all_users()
     scheduler.start()
+    dispatcher = create_dispatcher(hydration_service, reminder_scheduler)
     logger.info("Scheduler started")
 
     try:

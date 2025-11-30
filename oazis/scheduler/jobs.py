@@ -13,110 +13,97 @@ from oazis.config import Settings
 from oazis.services.hydration import HydrationService
 
 
-async def send_hydration_reminders(bot: Bot, service: HydrationService, settings: Settings) -> None:
-    """Send a simple hydration reminder to every registered user."""
-    now = datetime.now(ZoneInfo(settings.timezone))
+async def send_hydration_reminder_for_user(bot: Bot, service: HydrationService, settings: Settings, user_id: int) -> None:
+    """Send a hydration reminder for a single user (scheduled individually)."""
+    user = await service.ensure_user(user_id)
+    timezone = user.timezone or settings.timezone
+    now = datetime.now(ZoneInfo(timezone))
 
-    users = await service.list_users()
-    if not users:
-        logger.debug("No users registered for reminders")
-        return
+    start_hour = user.reminder_start_hour or settings.hydration_start_hour
+    end_hour = user.reminder_end_hour or settings.hydration_end_hour
+    interval_minutes = user.reminder_interval_minutes or settings.reminder_interval_minutes
+    paused = await service.is_reminders_paused_today(user.telegram_id)
 
     logger.info(
-        "event=reminder_tick now={now} users={count}",
+        "event=reminder_tick user_id={user_id} now={now} start_hour={start} end_hour={end} interval_min={interval}",
+        user_id=user.telegram_id,
         now=now.isoformat(),
-        count=len(users),
+        start=start_hour,
+        end=end_hour,
+        interval=interval_minutes,
     )
 
-    for user in users:
-        start_hour = user.reminder_start_hour or settings.hydration_start_hour
-        end_hour = user.reminder_end_hour or settings.hydration_end_hour
-        interval_minutes = user.reminder_interval_minutes or settings.reminder_interval_minutes
-        paused = await service.is_reminders_paused_today(user.telegram_id)
+    if paused:
+        logger.debug("Skip user {user_id}: reminders paused today", user_id=user.telegram_id)
+        return
 
-        if paused:
-            logger.debug("Skip user {user_id}: reminders paused today", user_id=user.telegram_id)
-            continue
-        if not _is_valid_window(start_hour, end_hour):
-            logger.debug(
-                "Skip user {user_id}: invalid window {start}-{end}",
-                user_id=user.telegram_id,
-                start=start_hour,
-                end=end_hour,
-            )
-            continue
+    if not _is_valid_window(start_hour, end_hour):
+        logger.debug(
+            "Skip user {user_id}: invalid window {start}-{end}",
+            user_id=user.telegram_id,
+            start=start_hour,
+            end=end_hour,
+        )
+        return
 
-        if interval_minutes <= 0:
-            logger.debug("Skip user {user_id}: invalid interval {interval}", user_id=user.telegram_id, interval=interval_minutes)
-            continue
+    if interval_minutes <= 0:
+        logger.debug("Skip user {user_id}: invalid interval {interval}", user_id=user.telegram_id, interval=interval_minutes)
+        return
 
-        minutes_now = now.hour * 60 + now.minute
-        minutes_start = start_hour * 60
+    minutes_now = now.hour * 60 + now.minute
+    minutes_start = start_hour * 60
 
-        if not (minutes_start <= minutes_now < end_hour * 60):
-            logger.debug(
-                "Skip user {user_id}: outside reminder window now={now_hour}:{now_minute:02d} window={start}-{end}",
-                user_id=user.telegram_id,
-                now_hour=now.hour,
-                now_minute=now.minute,
-                start=start_hour,
-                end=end_hour,
-            )
-            continue
+    if not (minutes_start <= minutes_now < end_hour * 60):
+        logger.debug(
+            "Skip user {user_id}: outside reminder window now={now_hour}:{now_minute:02d} window={start}-{end}",
+            user_id=user.telegram_id,
+            now_hour=now.hour,
+            now_minute=now.minute,
+            start=start_hour,
+            end=end_hour,
+        )
+        return
 
-        window_minutes = min(settings.reminder_check_minutes, interval_minutes)
-        minutes_since_start = minutes_now - minutes_start
-        # Allow a reminder in the first `window_minutes` after each interval boundary.
-        remainder = minutes_since_start % interval_minutes
-        if remainder > window_minutes:
-            logger.debug(
-                "Skip user {user_id}: off-slot remainder={remainder} window={window}",
-                user_id=user.telegram_id,
-                remainder=remainder,
-                window=window_minutes,
-            )
-            continue
+    entry = await service.get_today_entry(user.telegram_id)
+    target_glasses = user.daily_target_glasses or settings.default_daily_glasses
+    target_ml = user.daily_target_ml or target_glasses * settings.glass_volume_ml
+    if entry:
+        target_ml = entry.goal_ml
+    consumed = entry.consumed_ml if entry else 0
 
-        entry = await service.get_today_entry(user.telegram_id)
-        target_glasses = user.daily_target_glasses or settings.default_daily_glasses
-        target_ml = user.daily_target_ml or target_glasses * settings.glass_volume_ml
-        if entry:
-            target_ml = entry.goal_ml
-        consumed = entry.consumed_ml if entry else 0
+    if consumed >= target_ml:
+        already_notified = await service.has_goal_been_notified(user.telegram_id)
+        if not already_notified:
+            await _send_goal_reached(bot, user.telegram_id, consumed, target_ml)
+            await service.record_goal_notified(user.telegram_id)
+        return
 
-        if consumed >= target_ml:
-            already_notified = await service.has_goal_been_notified(user.telegram_id)
-            if not already_notified:
-                await _send_goal_reached(bot, user.telegram_id, consumed, target_ml)
-                await service.record_goal_notified(user.telegram_id)
-            continue
+    tip = _time_of_day_tip(now.hour)
+    friendly_interval = format_interval(interval_minutes)
 
-        tip = _time_of_day_tip(now.hour)
-        friendly_interval = format_interval(interval_minutes)
-
-        try:
-            await bot.send_message(
-                user.telegram_id,
-                "💧 <b>Rappel hydratation</b>\n"
-                f"{_reminder_intro(start_hour, end_hour, friendly_interval)}\n"
-                f"• Astuce : <i>{tip}</i>\n"
-                f"{_reminder_humor()}\n"
-                f"Objectif du jour : <b>{format_volume_ml(target_ml)}</b>\n"
-                "👉 Appuie ci-dessous si tu viens de boire.\n"
-                "Besoin de couper les rappels du jour ? Va dans ⚙️ Réglages.",
-                reply_markup=reminder_actions_keyboard(),
-            )
-            logger.info(
-                "event=reminder_sent user_id={user_id} target_ml={target_ml} consumed_ml={consumed_ml} start_hour={start} end_hour={end} interval_min={interval}",
-                user_id=user.telegram_id,
-                target_ml=target_ml,
-                consumed_ml=consumed,
-                start=start_hour,
-                end=end_hour,
-                interval=interval_minutes,
-            )
-        except Exception as exc:  # noqa: BLE001 - log and continue
-            logger.error("Failed to send reminder to {user_id}: {error}", user_id=user.telegram_id, error=exc)
+    try:
+        await bot.send_message(
+            user.telegram_id,
+            "💧 <b>Rappel hydratation</b>\n"
+            f"{_reminder_intro(start_hour, end_hour, friendly_interval)}\n"
+            f"• Astuce : <i>{tip}</i>\n"
+            f"{_reminder_humor()}\n"
+            f"Objectif du jour : <b>{format_volume_ml(target_ml)}</b>\n"
+            "👉 Appuie ci-dessous si tu viens de boire.\n"
+            "Besoin de couper les rappels du jour ? Va dans ⚙️ Réglages.",
+            reply_markup=reminder_actions_keyboard(),
+        )
+        logger.info(
+            "event=reminder_sent user_id={user_id} target_ml={target_ml} consumed_ml={consumed_ml} start_hour={start} end_hour={end} interval_min={interval}",
+            user_id=user.telegram_id,
+            target_ml=target_ml,
+            consumed_ml=consumed,
+            start=start_hour,
+            end=end_hour,
+            interval=interval_minutes,
+        )
+    except Exception as exc:  # noqa: BLE001 - log and continue
+        logger.error("Failed to send reminder to {user_id}: {error}", user_id=user.telegram_id, error=exc)
 
 
 def _is_valid_window(start: int, end: int) -> bool:

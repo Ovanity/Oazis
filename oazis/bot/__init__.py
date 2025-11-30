@@ -5,6 +5,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from oazis.config import Settings
+from oazis.scheduler import ReminderScheduler
 from oazis.services.hydration import HydrationService
 
 from .handlers import build_router
@@ -18,12 +19,11 @@ def create_bot(settings: Settings) -> Bot:
     )
 
 
-def create_dispatcher(service: HydrationService) -> Dispatcher:
+def create_dispatcher(service: HydrationService, reminder_scheduler: ReminderScheduler) -> Dispatcher:
     """Create a dispatcher and attach routers."""
     dispatcher = Dispatcher()
-    dispatcher.include_router(build_router(service))
+    dispatcher.include_router(build_router(service, reminder_scheduler))
     return dispatcher
 
 
 __all__ = ["create_bot", "create_dispatcher"]
-
